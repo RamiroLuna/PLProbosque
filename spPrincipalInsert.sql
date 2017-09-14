@@ -2,7 +2,6 @@ CREATE OR REPLACE FUNCTION formularios.spPrincipalInsert
 (
 	IN _expediente varchar(30) default ''
 	, IN _expediente_origen varchar(30) default ''
-	, IN _region integer default 0::integer
 	, IN _id_tipo_propiedad integer default 0::integer
 	, IN _representante_actual varchar(255) default ''
 	, IN _representante_original varchar(255) default ''
@@ -16,7 +15,7 @@ CREATE OR REPLACE FUNCTION formularios.spPrincipalInsert
 	, IN _oficio_autorizacion varchar(60) default ''
 	, IN _fecha_expedicion varchar(15) default ''
 	, IN _fecha_vencimiento varchar(15) default ''
-	, IN _usufructuarios numeric(10,2) default ''
+	, IN _usufructuarios numeric(10,2) default 0::numeric(10,2)
 	, IN _metodo_manejo integer default 0::integer
 	, IN _superficie_total numeric(10,2) default 0::numeric(10,2)
 	, IN _superficie_anp_federal numeric(10,2) default 0::numeric(10,2) 
@@ -39,10 +38,11 @@ CREATE OR REPLACE FUNCTION formularios.spPrincipalInsert
 	, IN _modulopredio_municipio integer default 0::integer
 	, IN _modulopredio_localidad integer default 0::integer
 	, IN _modulopredio_cup varchar(20) default ''
+	, IN _modulopredio_region integer default 0::integer
 	, IN _latitud_utm numeric(7,0) default 0::numeric(7,0)
 	, IN _longitud_utm numeric(6,0) default 0::numeric(6,0)
 )
-return varchar(15) as
+returns varchar(15) as
 
 $BODY$
 	DECLARE
@@ -51,7 +51,7 @@ $BODY$
 	vSubFolio varchar(6);
 	vFolio varchar(15);
 	BEGIN
-		vSubFolio:= 'AM'||SUBSTRING(CAST(_anio AS VARCHAR(5)), 3, 4)||'0'||_region;
+		vSubFolio:= 'AM'||SUBSTRING(CAST(_anio AS VARCHAR(5)), 3, 4)||'0'||_modulopredio_region;
 		
 		vConsecutivo:= (SELECT CASE WHEN MAX(CAST(SUBSTRING(folio, 7, 9) AS INTEGER)) IS NULL OR MAX(CAST(substring(folio, 7, 9) AS INTEGER)) = 0 THEN 1 ELSE MAX(CAST(substring(folio, 7, 9) AS INTEGER)) + 1 END
 							FROM formularios.principal
@@ -74,7 +74,6 @@ $BODY$
 						folio
 						, expediente
 						, expediente_origen
-						, region
 						, id_tipo_propiedad
 						, representante_actual
 						, representante_original
@@ -111,11 +110,12 @@ $BODY$
 						, modulopredio_municipio
 						, modulopredio_localidad
 						, modulopredio_cup
+						, modulopredio_region
 						, latitud_utm
 						, longitud_utm
 					)';
 
-		SQL_QUERY:= SQL_QUERY || 'VALUES ('||vFolio||', ';
+		SQL_QUERY:= SQL_QUERY || 'VALUES ('''||vFolio||''', ';
 
 		IF(_expediente = NULL OR _expediente = '' OR _expediente = ' ')
 			THEN 
@@ -131,8 +131,6 @@ $BODY$
 				SQL_QUERY:= SQL_QUERY || ''''||_expediente_origen||''', ';
 		END IF;
 
-		SQL_QUERY:= SQL_QUERY || ''||_region||', ';
-		
 		IF(_id_tipo_propiedad = NULL OR _id_tipo_propiedad = 0)
 			THEN 
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
@@ -186,14 +184,14 @@ $BODY$
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || ''_tipo_autorizacion', ';
+				SQL_QUERY:= SQL_QUERY || ''||_tipo_autorizacion||', ';
 		END IF;
 
 		IF(_dependencia_expide = NULL OR _dependencia_expide = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || ''_dependencia_expide', ';
+				SQL_QUERY:= SQL_QUERY || ''||_dependencia_expide||', ';
 		END IF;
 
 		IF(_codigo_semarnat = NULL OR _codigo_semarnat = '' OR _codigo_semarnat = ' ')
@@ -214,21 +212,21 @@ $BODY$
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_expedicion||''' AS date, ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_expedicion||''' AS date), ';
 		END IF;
 
 		IF(_fecha_vencimiento = NULL OR _fecha_vencimiento = '' OR _fecha_vencimiento = ' ')
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_vencimiento||''' AS date, ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_vencimiento||''' AS date), ';
 		END IF;
 
 		IF(_usufructuarios = NULL OR _usufructuarios = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_usufructuarios||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_usufructuarios||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_metodo_manejo = NULL OR _metodo_manejo = 0)
@@ -242,77 +240,77 @@ $BODY$
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_total||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_total||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_anp_federal = NULL OR _superficie_anp_federal = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_anp_federal||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_anp_federal||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_conservacion = NULL OR _superficie_conservacion = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_conservacion||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_conservacion||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_franja_protectora = NULL OR _franja_protectora = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_franja_protectora||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_franja_protectora||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_pendientes = NULL OR _superficie_pendientes = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_pendientes||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_pendientes||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_msnm = NULL OR _superficie_msnm = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_msnm||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_msnm||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_bosque_mesofilo = NULL OR _superficie_bosque_mesofilo = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_bosque_mesofilo||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_bosque_mesofilo||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_produccion = NULL OR _superficie_produccion = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_produccion||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_produccion||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_restauracion = NULL OR _superficie_restauracion = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_restauracion||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_restauracion||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_otros_usos = NULL OR _superficie_otros_usos = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_otros_usos||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_otros_usos||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_superficie_arbolada = NULL OR _superficie_arbolada = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_arbolada||' AS numeric(10,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_superficie_arbolada||' AS numeric(10,2)), ';
 		END IF;
 
 		IF(_nombre_apn = NULL OR _nombre_apn = 0)
@@ -333,7 +331,7 @@ $BODY$
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_num_intervenciones||' AS numeric(8,2), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_num_intervenciones||' AS numeric(8,2)), ';
 		END IF;
 
 		IF(_situacion_especial_predio = NULL OR _situacion_especial_predio = '' OR _situacion_especial_predio = ' ')
@@ -347,7 +345,7 @@ $BODY$
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_situacion||''' AS date, ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('''||_fecha_situacion||''' AS date), ';
 		END IF;
 
 		SQL_QUERY:= SQL_QUERY || ''||_anio||', ';
@@ -373,31 +371,35 @@ $BODY$
 				SQL_QUERY:= SQL_QUERY || ''||_modulopredio_localidad||', ';
 		END IF;
 
-		IF(_modulopredio_cup = NULL OR _modulopredio_cup = 0)
+		IF(_modulopredio_cup = NULL OR _modulopredio_cup = '' OR _modulopredio_cup = ' ')
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
 				SQL_QUERY:= SQL_QUERY || ''||_modulopredio_cup||', ';
 		END IF;
 
+		SQL_QUERY:= SQL_QUERY || ''||_modulopredio_region||', ';
+
 		IF(_latitud_utm = NULL OR _latitud_utm = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL, ';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_latitud_utm||' AS numeric(7,0), ';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_latitud_utm||' AS numeric(7,0)), ';
 		END IF;
 
 		IF(_longitud_utm = NULL OR _longitud_utm = 0)
 			THEN
 				SQL_QUERY:= SQL_QUERY || 'NULL)';
 			ELSE
-				SQL_QUERY:= SQL_QUERY || 'CAST('||_longitud_utm||' AS numeric(6,0))';
+				SQL_QUERY:= SQL_QUERY || 'CAST('||_longitud_utm||' AS numeric(6,0)))';
 		END IF;
 
 		EXECUTE SQL_QUERY;
 		RETURN vFolio;
-	END
+	END;
 $BODY$
 LANGUAGE 'plpgsql'
 
-
+SELECT spPrincipalInsert AS result FROM formularios.spPrincipalInsert('Prueba 1', 'Prueba 1', 1, 'Prueba 1', 'Prueba 1', 'HUD84932JDFD345', 'Prueba 1'
+	, 1, 1, 1, 1, 'Prueba 1', 'Prueba 1', '2017-01-01', '2017-01-01', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 'Prueba 1', '2017-01-01', 2016, 1, 1
+	, 1, '478394', 1, 1, 1)
